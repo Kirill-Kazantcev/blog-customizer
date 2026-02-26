@@ -19,27 +19,15 @@ export const useCloseOnOutsideClickOrEsc = ({
 		const handleClickOutside = (event: MouseEvent) => {
 			const target = event.target as Node;
 
-			if (target instanceof HTMLElement) {
-				const isInteractiveElement =
-					target.closest('button') ||
-					target.closest('.select') ||
-					target.closest('[role="listbox"]') ||
-					target.closest('[role="option"]') ||
-					target.closest('.radio-group') ||
-					target.closest('input') ||
-					target.closest('label');
-				if (isInteractiveElement) {
-					return;
-				}
+			if (elementRef.current?.contains(target)) {
+				return;
 			}
 
-			const isClickInsideSidebar = elementRef.current?.contains(target);
-
-			const isClickOnArrow = excludeRef?.current?.contains(target);
-
-			if (!isClickInsideSidebar && !isClickOnArrow) {
-				onClose();
+			if (excludeRef?.current?.contains(target)) {
+				return;
 			}
+
+			onClose();
 		};
 
 		const handleEscKey = (event: KeyboardEvent) => {
