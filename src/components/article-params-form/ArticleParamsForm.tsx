@@ -1,6 +1,6 @@
 import { ArrowButton } from 'src/ui/arrow-button';
 import { Button } from 'src/ui/button';
-import React, { Fragment, useState, useRef, useEffect } from 'react';
+import React, { Fragment, useState, useRef } from 'react';
 
 import styles from './ArticleParamsForm.module.scss';
 import clsx from 'clsx';
@@ -9,7 +9,6 @@ import {
 	ArticleStateType,
 	backgroundColors,
 	contentWidthArr,
-	defaultArticleState,
 	fontColors,
 	fontFamilyOptions,
 	fontSizeOptions,
@@ -17,88 +16,93 @@ import {
 } from 'src/constants/articleProps';
 import { RadioGroup } from 'src/ui/radio-group';
 import { Separator } from 'src/ui/separator';
+import { useCloseOnOutsideClickOrEsc } from 'src/hooks/useCloseOnOutsideClickOrEsc';
 
 type Props = {
 	onApply: (newState: ArticleStateType) => void;
 	onReset: () => void;
+	currentState: ArticleStateType;
 };
 
-export const ArticleParamsForm = ({ onApply, onReset }: Props) => {
-	const [isOpen, setIsOpen] = useState(false);
-	const [formState, setFormState] = useState(defaultArticleState);
+export const ArticleParamsForm = ({
+	onApply,
+	onReset,
+	currentState,
+}: Props) => {
+	const [isFormOpen, setIsFormOpen] = useState(false);
+	const [formState, setFormState] = useState(currentState);
 
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	const arrowButtonRef = useRef<HTMLDivElement>(null);
 
-	useEffect(() => {
-		const handleClickOutside = (event: MouseEvent) => {
-			if (!isOpen) return;
+	useCloseOnOutsideClickOrEsc({
+		isOpen: isFormOpen,
+		onClose: () => setIsFormOpen(false),
+		elementRef: sidebarRef,
+		excludeRef: arrowButtonRef,
+	});
 
-			const target = event.target as Node;
-			const isClickInsideSidebar = sidebarRef.current?.contains(target);
-			const isClickOnArrow = arrowButtonRef.current?.contains(target);
-
-			if (!isClickInsideSidebar && !isClickOnArrow) {
-				setIsOpen(false);
-			}
+	const handleChange =
+		(key: keyof ArticleStateType) => (option: OptionType) => {
+			setFormState((prev) => ({
+				...prev,
+				[key]: option,
+			}));
 		};
-
-		if (isOpen) {
-			document.addEventListener('click', handleClickOutside);
-			return () => document.removeEventListener('click', handleClickOutside);
-		}
-	}, [isOpen]);
-
-	const handleChange = (key: keyof ArticleStateType, option: OptionType) => {
-		setFormState((prev) => ({
-			...prev,
-			[key]: option,
-		}));
-	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		onApply(formState);
-		setIsOpen(false);
+		// Не закрываем форму!
 	};
 
-	const handleReset = () => {
-		setFormState(defaultArticleState);
+	const handleFormReset = (e: React.FormEvent) => {
+		e.preventDefault();
+		setFormState(currentState);
 		onReset();
-		setIsOpen(false);
+		// Не закрываем форму!
+	};
+
+	const toggleForm = () => {
+		setIsFormOpen((prev) => !prev);
+		if (!isFormOpen) {
+			setFormState(currentState);
+		}
 	};
 
 	return (
 		<Fragment>
 			<div ref={arrowButtonRef}>
-				<ArrowButton
-					isOpen={isOpen}
-					onClick={() => setIsOpen((prev) => !prev)}
-				/>
+				<ArrowButton isOpen={isFormOpen} onClick={toggleForm} />
 			</div>
 			<aside
 				ref={sidebarRef}
-				className={clsx(styles.container, { [styles.container_open]: isOpen })}>
-				<form className={styles.form} onSubmit={handleSubmit}>
+				className={clsx(styles.container, {
+					[styles.container_open]: isFormOpen,
+				})}>
+				<form
+					className={styles.form}
+					onSubmit={handleSubmit}
+					onReset={handleFormReset}>
 					<h2 className={styles.title}>Задайте параметры</h2>
 					<fieldset className={styles.group}>
 						<Select
 							options={fontFamilyOptions}
 							selected={formState.fontFamilyOption}
-							onChange={(option) => handleChange('fontFamilyOption', option)}
+							onChange={handleChange('fontFamilyOption')}
 							title='шрифт'
 						/>
 						<RadioGroup
 							name='font-size'
 							options={fontSizeOptions}
 							selected={formState.fontSizeOption}
-							onChange={(option) => handleChange('fontSizeOption', option)}
+							onChange={handleChange('fontSizeOption')}
 							title='размер шрифта'
 						/>
 						<Select
 							options={fontColors}
 							selected={formState.fontColor}
-							onChange={(option) => handleChange('fontColor', option)}
+							onChange={handleChange('fontColor')}
 							title='цвет шрифта'
 						/>
 					</fieldset>
@@ -107,23 +111,18 @@ export const ArticleParamsForm = ({ onApply, onReset }: Props) => {
 						<Select
 							options={backgroundColors}
 							selected={formState.backgroundColor}
-							onChange={(option) => handleChange('backgroundColor', option)}
+							onChange={handleChange('backgroundColor')}
 							title='цвет фона'
 						/>
 						<Select
 							options={contentWidthArr}
 							selected={formState.contentWidth}
-							onChange={(option) => handleChange('contentWidth', option)}
+							onChange={handleChange('contentWidth')}
 							title='ширина контента'
 						/>
 					</fieldset>
 					<div className={styles.bottomContainer}>
-						<Button
-							title='Сбросить'
-							htmlType='button'
-							type='clear'
-							onClick={handleReset}
-						/>
+						<Button title='Сбросить' htmlType='reset' type='clear' />
 						<Button title='Применить' htmlType='submit' type='apply' />
 					</div>
 				</form>
